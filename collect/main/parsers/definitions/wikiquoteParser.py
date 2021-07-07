@@ -31,4 +31,4 @@ def get_html_from(link: str, target: str) -> pd.DataFrame:
     return pd.DataFrame(all_results, columns=['wisdom', 'def_1'])
 
 
-get_html_from('https://ko.wikiquote.org/wiki/한국_속담', 'dl').to_csv(paths.DATA_DIR+'/definitions/wikiquote.csv')
+get_html_from('https://ko.wikiquote.org/wiki/한국_속담', 'dl').to_csv(paths.DATA_DIR+'/definitions/wikiquote_naver.csv')
