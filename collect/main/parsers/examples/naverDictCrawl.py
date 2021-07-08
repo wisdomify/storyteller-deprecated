@@ -51,6 +51,19 @@ def get_examples_of(word: str):
     return eg_df
 
 
+def get_naverdict_examples_from(target_dictionary: str):
+    wisdoms = get_proverbs(target_csv=target_dictionary+'.csv')
+
+    base_df = pd.DataFrame()
+    for idx, wisdom in enumerate(wisdoms):
+        print('current({}/{}):'.format(idx + 1, len(wisdoms)), wisdom, '=>', end='')
+        examples_df = get_examples_of(wisdom)
+        if len(examples_df) > 0:
+            base_df = base_df.append(examples_df)
+        print()
+    base_df.to_csv(DATA_DIR + '/examples/wikiquote_naver.csv')
+
+
 if __name__ == '__main__':
     wisdoms = get_proverbs(target_csv='wikiquote_naver.csv')
 

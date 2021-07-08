@@ -24,4 +24,5 @@ def get_html_from(link: str, target: str) -> pd.DataFrame:
     return pd.DataFrame(all_results, columns=['wisdom', 'def_1'])
 
 
-get_html_from('https://namu.wiki/w/속담/한국', 'wiki-paragraph').to_csv(paths.DATA_DIR+'/definitions/namuwiki.csv')
+def get_namuwiki_definitions():
+    get_html_from('https://namu.wiki/w/속담/한국', 'wiki-paragraph').to_csv(paths.DATA_DIR + '/definitions/namuwiki.csv')
