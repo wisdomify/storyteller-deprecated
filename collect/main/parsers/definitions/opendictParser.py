@@ -49,3 +49,15 @@ def get_opendict_definitions():
         print(res_proverbs_pd.head(1))
 
         res_proverbs_pd.to_csv(paths.DATA_DIR+'/definitions/opendict/{start}.csv'.format(start=params['start']))
+
+    base_dir = paths.DATA_DIR + '/opendict'
+
+    files = os.listdir(base_dir)
+
+    base_df = pd.DataFrame()
+
+    for file in files:
+        cur_df = pd.read_csv(base_dir + file).drop('Unnamed: 0', axis=1)
+        base_df = base_df.append(cur_df)
+
+    base_df.to_csv(paths.DATA_DIR + '/definitions/opendict.csv', index=False)
