@@ -61,7 +61,7 @@ def get_naverdict_examples_from(target_dictionary: str):
         if len(examples_df) > 0:
             base_df = base_df.append(examples_df)
         print()
-    base_df.to_csv(DATA_DIR + '/examples/wikiquote_naver.csv')
+    base_df.to_csv(DATA_DIR + '/examples/{}_naver.csv'.format(target_dictionary))
 
 
 if __name__ == '__main__':

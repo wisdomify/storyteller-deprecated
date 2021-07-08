@@ -1,5 +1,7 @@
 import json
+import os
 import re
+from http import HTTPStatus
 
 import pandas as pd
 import requests
@@ -7,7 +9,9 @@ from urllib.parse import quote
 
 from bs4 import BeautifulSoup
 
+from collect.main.parsers.examples.utils import get_proverbs, get_target_proverbs
 from collect.main.parsers.utils.morphAnalysis import MorphAnalyzer
+from collect.main.paths import DATA_DIR
 
 
 class KoreaUniversityCorpusSearcher:
@@ -26,7 +30,7 @@ class KoreaUniversityCorpusSearcher:
     @staticmethod
     def _get_list_sentence_request_body(target_word: str):
         return {
-            'listSize': 50,
+            'listSize': 200,
             'page': 1,
             'unit': 'm',
             'keyword': target_word,
@@ -73,15 +77,27 @@ class KoreaUniversityCorpusSearcher:
             .decode('utf-8')
         return pd.read_html(res)[1].iloc[0].to_string().split('    ')[-1]
 
-    def get_examples_of(self, word: str) -> pd.DataFrame:
+    def get_examples_of(self, word: str) -> [str, pd.DataFrame]:
         query_word = self.morph_analyzer.get_query_format_of(word=word)
+        print(' ->', query_word, end=' ')
         res = requests.post(url=self.sentence_view_url,
                             headers=self._get_base_fake_header(),
-                            data=self._get_list_sentence_request_body(target_word=query_word)) \
-            .content \
+                            data=self._get_list_sentence_request_body(target_word=query_word))
+
+        if res.status_code != HTTPStatus.OK:
+            print('NO EXAMPLE', end=' ')
+            return ''
+
+        res = res.content \
             .decode('utf-8')
 
-        example_df = pd.read_html(res)[0].rename(columns={0: 'eg'})
+        df = pd.read_html(res)
+        if len(df) > 0:
+            example_df = df[0].rename(columns={0: 'eg'})
+        else:
+            print('Example load failed')
+            print(df)
+            return ''
 
         soup = BeautifulSoup(res, 'lxml')
 
@@ -94,28 +110,61 @@ class KoreaUniversityCorpusSearcher:
         ))
 
         example_df['eg_id'] = sent_ids
+        example_df['wisdom'] = word
 
-        return example_df[['eg_id', 'eg']]
+        return example_df[['wisdom', 'eg_id', 'eg']]
 
-    def get_total_data_of(self, word: str) -> pd.DataFrame:
+    def get_total_data_of(self, word: str) -> [str, pd.DataFrame]:
         df = self.get_examples_of(word)
+        if len(df) > 0:
+            print('(egs: {count})\n\t-> base eg loaded'.format(count=len(df)), end=' ')
 
-        df['prev'] = df[['eg_id']] \
-            .apply(lambda x: self.get_close_contexts(x - 1), axis=1)
+            df['prev'] = df[['eg_id']] \
+                .apply(lambda x: self.get_close_contexts(x - 1), axis=1)
+            print('-> prev loaded', end=' ')
 
-        df['next'] = df[['eg_id']] \
-            .apply(lambda x: self.get_close_contexts(x + 1), axis=1)
+            df['next'] = df[['eg_id']] \
+                .apply(lambda x: self.get_close_contexts(x + 1), axis=1)
+            print('-> next loaded', end=' ')
 
-        df['full'] = df[['eg_id']] \
-            .apply(lambda x: self.get_full_text(x), axis=1)
+            df['full'] = df[['eg_id']] \
+                .apply(lambda x: self.get_full_text(x), axis=1)
+            print('-> full text loaded', end=' ')
 
-        df = df[['eg_id', 'prev', 'eg', 'next', 'full']]
+            df = df[['wisdom', 'eg_id', 'prev', 'eg', 'next', 'full']]
 
-        df.to_csv('./tmp.csv')
+            return df
+        return ''
 
-        return df
+
+def get_korea_university_corpus_result(target_dictionary: str):
+    def _get_downloaded_list(destination_existence: bool, location: str):
+        if not destination_existence:
+            return []
+        return set(pd.read_csv(location)['wisdom'])
+
+    corpusSearcher = KoreaUniversityCorpusSearcher()
+
+    save_location = DATA_DIR + '/examples/{}_koreaUniv.csv'.format(target_dictionary)
+    is_save_destination_exist = os.path.isfile(save_location)
+
+    raw_wisdoms = get_proverbs(target_csv=target_dictionary + '.csv')
+    downloaded = _get_downloaded_list(destination_existence=is_save_destination_exist,
+                                      location=save_location)
+
+    wisdoms = get_target_proverbs(downloaded=downloaded, proverbs=raw_wisdoms)
+
+    for idx, wisdom in enumerate(wisdoms):
+        print('current({}/{}):'.format(idx + 1, len(wisdoms)), wisdom, end=' ')
+        examples_df = corpusSearcher.get_total_data_of(wisdom)
+        if len(examples_df) > 0:
+            if is_save_destination_exist:
+                examples_df.to_csv(save_location, mode='a', header=False)
+            else:
+                examples_df.to_csv(save_location)
+
+        print()
 
 
 if __name__ == '__main__':
-    corpusSearcher = KoreaUniversityCorpusSearcher()
-    corpusSearcher.get_total_data_of('가는 날이 장날')
+    get_korea_university_corpus_result('egs')
