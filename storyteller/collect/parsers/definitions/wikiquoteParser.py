@@ -3,7 +3,7 @@ from selenium.webdriver.chrome.options import Options
 import pandas as pd
 from functools import reduce
 
-from collect.main import paths
+from storyteller import paths
 
 
 def get_html_from(link: str, target: str) -> pd.DataFrame:

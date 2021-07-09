@@ -9,9 +9,9 @@ from urllib.parse import quote
 
 from bs4 import BeautifulSoup
 
-from collect.main.parsers.examples.utils import get_proverbs, get_target_proverbs
-from collect.main.parsers.utils.morphAnalysis import MorphAnalyzer
-from collect.main.paths import DATA_DIR
+from storyteller.collect.utils.proverbUtils import get_proverbs, get_target_proverbs
+from storyteller.collect.utils.morphAnalysis import MorphAnalyzer
+from storyteller.paths import DATA_DIR
 
 
 class KoreaUniversityCorpusSearcher:

@@ -5,7 +5,8 @@ import xmltodict as xmltodict
 import pandas as pd
 
 import secrets
-from collect.main import paths
+
+from storyteller import paths
 
 
 def get_opendict_definitions():

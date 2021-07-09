@@ -1,12 +1,13 @@
 import argparse
 import os
 
-from collect.main import paths
-from collect.main.parsers.definitions.namuwikiParser import get_namuwiki_definitions
-from collect.main.parsers.definitions.opendictParser import get_opendict_definitions
-from collect.main.parsers.definitions.wikiquoteParser import get_wikiquote_definitions
-from collect.main.parsers.examples.daumDictCrawl import get_daumdict_examples_from
-from collect.main.parsers.examples.naverDictCrawl import get_naverdict_examples_from
+from storyteller import paths
+from storyteller.collect.parsers.definitions.namuwikiParser import get_namuwiki_definitions
+from storyteller.collect.parsers.definitions.opendictParser import get_opendict_definitions
+from storyteller.collect.parsers.definitions.wikiquoteParser import get_wikiquote_definitions
+from storyteller.collect.parsers.examples.daumDictCrawl import get_daumdict_examples_from
+from storyteller.collect.parsers.examples.koreaUniversityCrawl import get_korea_university_corpus_result
+from storyteller.collect.parsers.examples.naverDictCrawl import get_naverdict_examples_from
 
 
 def _make_folder(directory: str):
@@ -61,7 +62,8 @@ def main():
             get_daumdict_examples_from(target)
 
         elif where == 'koreauniveristy':
-            raise NotImplementedError("Korea University's university corpus data crawler is not yet implemented.")
+            get_korea_university_corpus_result(target)
+
         elif where == 'corpuskorean':
             raise NotImplementedError("Corpus korean data crawler is not yet implemented.")
         elif where == 'kaist':
