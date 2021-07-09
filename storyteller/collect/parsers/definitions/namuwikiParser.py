@@ -2,7 +2,7 @@ import pandas as pd
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 
-from collect.main import paths
+from storyteller import paths
 
 
 def get_html_from(link: str, target: str) -> pd.DataFrame:

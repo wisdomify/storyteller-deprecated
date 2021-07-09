@@ -1,6 +1,6 @@
-from collect.main.paths import DATA_DIR
-
 import pandas as pd
+
+from storyteller.paths import DATA_DIR
 
 
 def get_proverbs(target_csv: str):
