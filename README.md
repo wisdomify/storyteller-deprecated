@@ -14,8 +14,8 @@ Clone this project and set up a virtualenv:
 ~~~bash
 git clone https://github.com/ArtemisDicoTiar/storyteller
 cd storyteller
-virtualenv storyteller
-source storyteller/bin/activate  # activate the virtualenv
+virtualenv storytellerEnv
+source storytellerEnv/bin/activate  # activate the virtualenv
 pip3 install -r ./requirements.txt  # install the required libraries onto the virtualenv
 ~~~
 
@@ -37,30 +37,38 @@ Now the project structure should be look like the following.
 .
 ├── README.md
 ├── .env
-├── storyteller  -> virtualenv
-├── collect
-│   └── main
-│       ├── downloader.py
-│       ├── modifiers
-│       │   ├── exampleOrganiser.py
-│       │   └── opendictOrganiser.py
-│       ├── parsers
-│       │   ├── definitions
-│       │   │   ├── namuwikiParser.py
-│       │   │   ├── opendictParser.py
-│       │   │   └── wikiquoteParser.py
-│       │   └── examples
-│       │       ├── daumDictCrawl.py
-│       │       ├── naverDictCrawl.py
-│       │       └── utils.py
-│       └── paths.py
 ├── requirements.txt
-└── secrets.py
-~~~
+└── storyteller
+    ├── collect
+    │   ├── modifiers
+    │   │   └── exampleOrganiser.py
+    │   ├── parsers
+    │   │   ├── definitions
+    │   │   │   ├── namuwikiParser.py
+    │   │   │   ├── opendictParser.py
+    │   │   │   └── wikiquoteParser.py
+    │   │   └── examples
+    │   │       ├── daumDictCrawl.py
+    │   │       ├── koreaUniversityCrawl.py
+    │   │       └── naverDictCrawl.py
+    │   └── utils
+    │       ├── morphAnalysis.py
+    │       └── proverbUtils.py
+    ├── examples
+    │   └── collect
+    │       ├── explore_parsers_definitions.py
+    │       ├── explore_parsers_examples.py
+    │       ├── explore_utils_morphAnalysis.py
+    │       └── explore_utils_proverbUtils.py
+    ├── main
+    │   └── dl_data.py
+    ├── paths.py
+    ├── secrets.py
+    └── tests
 
 Your storyteller gives you:
 ~~~bash
-python3 -m storyteller.main.downloader --{arg} {arg value}
+python3 -m storyteller.main.dl_data --{arg} {arg value}
 ~~~
 
 Arguments:
@@ -85,5 +93,5 @@ Arguments:
 
 Example
 ~~~bash
-python3 -m storyteller.main.downloader --which example --where daumdict --target wikiquote
+python3 -m storyteller.main.dl_data --which example --where daumdict --target wikiquote
 ~~~
