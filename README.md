@@ -65,7 +65,7 @@ Now the project structure should be look like the following.
     ├── paths.py
     ├── secrets.py
     └── tests
-
+~~~
 Your storyteller gives you:
 ~~~bash
 python3 -m storyteller.main.dl_data --{arg} {arg value}
