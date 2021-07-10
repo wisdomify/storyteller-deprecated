@@ -6,8 +6,8 @@ from storyteller.collect.parsers.examples.naverDictCrawl import get_naverdict_ex
 def main():
     target_dictionary = 'egs'
 
-    get_daumdict_examples_from(target_dictionary)
-    get_naverdict_examples_from(target_dictionary)
+    # get_daumdict_examples_from(target_dictionary)
+    # get_naverdict_examples_from(target_dictionary)
     get_korea_university_corpus_result(target_dictionary)
 
 
