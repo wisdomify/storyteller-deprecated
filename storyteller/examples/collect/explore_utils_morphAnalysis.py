@@ -16,6 +16,7 @@ def main():
     analyser = MorphAnalyzer()
 
     for proverb in proverbs:
+        print(list(analyser.get_morph_of(proverb)))
         print(analyser.get_query_format_of(proverb))
 
 

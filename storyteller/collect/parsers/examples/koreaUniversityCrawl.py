@@ -31,7 +31,7 @@ class KoreaUniversityCorpusSearcher:
     @staticmethod
     def _get_list_sentence_request_body(target_word: str):
         return {
-            'listSize': 200,
+            'listSize': 500,
             'page': 1,
             'unit': 'm',
             'keyword': target_word,
@@ -151,11 +151,11 @@ class KoreaUniversityCorpusSearcher:
         example_df['eg_id'] = sent_ids
         example_df['wisdom'] = word
 
-        # example_df['legit'] = example_df[['wisdom', 'eg']] \
-        #     .apply(lambda x: _filter_word_not_mentioned(x.wisdom, x.eg), axis=1)
-        #
-        #
-        # example_df = example_df[example_df['legit']]
+        example_df['legit'] = example_df[['wisdom', 'eg']] \
+            .apply(lambda x: _filter_word_not_mentioned(x.wisdom, x.eg), axis=1)
+
+
+        example_df = example_df[example_df['legit']]
 
         return example_df[['wisdom', 'eg_id', 'eg']]
 
@@ -229,4 +229,4 @@ def manual_download(target_dictionary: str, word: str):
 
 if __name__ == '__main__':
     # get_korea_university_corpus_result('egs')
-    manual_download('egs', '서당/NNG&개/NNG&풍월/NNG')
+    manual_download('egs', '산/NNG&넘/VV&어/EM&산/NNG')
