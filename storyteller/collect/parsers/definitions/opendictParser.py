@@ -1,18 +1,18 @@
 import os
+from datetime import datetime
 
 import requests
 import xmltodict as xmltodict
 import pandas as pd
 
-import secrets
-
 from storyteller import paths
+from storyteller.collect.utils.DBConnector import controller
+from storyteller.secrets import OPENDICT_API_KEY
 
 
 def get_opendict_definitions():
-
     BASE_URL = 'https://opendict.korean.go.kr/api/search'
-    KEY = secrets.OPENDICT_API_KEY
+    KEY = OPENDICT_API_KEY
 
     params = {
         'key': KEY,
@@ -28,8 +28,8 @@ def get_opendict_definitions():
 
     for start in range(1, 422):
         params['start'] = str(start)
-        if os.path.isfile(paths.DATA_DIR+'/definitions/opendict/{start}_{end}.csv'
-                                  .format(start=params['start'], end=int(params['start']) + int(params['num']) - 1)):
+        if os.path.isfile(paths.DATA_DIR + '/definitions/opendict/{start}_{end}.csv'
+                .format(start=params['start'], end=int(params['start']) + int(params['num']) - 1)):
             print('EXIST: {}'.format(start + 1))
             continue
 
@@ -49,16 +49,11 @@ def get_opendict_definitions():
         print("current start: {}\t current length: {}".format(start, len(res_proverbs_pd)))
         print(res_proverbs_pd.head(1))
 
-        res_proverbs_pd.to_csv(paths.DATA_DIR+'/definitions/opendict/{start}.csv'.format(start=params['start']))
+        # res_proverbs_pd.to_csv(paths.DATA_DIR + '/definitions/opendict/{start}.csv'.format(start=params['start']))
+        res_proverbs_pd['origin'] = 'opendict'
+        res_proverbs_pd['date'] = datetime.today().date()
+        res_proverbs_pd.drop(columns=['code'], inplace=True)
+        res_proverbs_pd.rename(columns={'def': 'definition'}, inplace=True)
 
-    base_dir = paths.DATA_DIR + '/opendict'
-
-    files = os.listdir(base_dir)
-
-    base_df = pd.DataFrame()
-
-    for file in files:
-        cur_df = pd.read_csv(base_dir + file).drop('Unnamed: 0', axis=1)
-        base_df = base_df.append(cur_df)
-
-    base_df.to_csv(paths.DATA_DIR + '/definitions/opendict.csv', index=False)
+        controller.save_df_to_sql(origin_df=res_proverbs_pd,
+                                  target_table_name='definition', if_exists='append', index=False)

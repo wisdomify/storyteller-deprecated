@@ -34,6 +34,3 @@ def save_namuwiki_definitions():
     controller.save_df_to_sql(origin_df=df,
                               target_table_name='definition', if_exists='append', index=False)
 
-
-if __name__ == '__main__':
-    save_namuwiki_definitions()
