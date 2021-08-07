@@ -1,6 +1,7 @@
 import json
 import os
 import re
+from datetime import datetime
 from functools import reduce
 
 import pandas as pd
@@ -10,6 +11,7 @@ from bs4 import BeautifulSoup
 from collections import Counter
 from http import HTTPStatus
 
+from storyteller.collect.utils.DBConnector import controller
 from storyteller.collect.utils.proverbUtils import get_proverbs, get_target_proverbs
 from storyteller.collect.utils.morphAnalysis import MorphAnalyzer
 from storyteller.paths import DATA_DIR
@@ -31,7 +33,7 @@ class KoreaUniversityCorpusSearcher:
     @staticmethod
     def _get_list_sentence_request_body(target_word: str):
         return {
-            'listSize': 500,
+            'listSize': 200,
             'page': 1,
             'unit': 'm',
             'keyword': target_word,
@@ -69,6 +71,14 @@ class KoreaUniversityCorpusSearcher:
             .decode('utf-8')
 
         return pd.read_html(res)[0][0].str.cat(sep=' /n')
+
+    def get_morph_analysis(self, word_id):
+        res = requests.post(url=self.morph_analysis_view_url,
+                            headers=self._get_base_fake_header(),
+                            data=self._get_morph_news_request_base_body(word_id)) \
+            .content \
+            .decode('utf-8')
+        return pd.read_html(res)[2][1].str.cat(sep='+').replace("'", "")
 
     def get_close_contexts(self, prev_id):
         res = requests.post(url=self.morph_analysis_view_url,
@@ -132,10 +142,10 @@ class KoreaUniversityCorpusSearcher:
 
         df = pd.read_html(res)
         if len(df) > 0:
-            example_df = df[0].rename(columns={0: 'eg'})
+            example_df = df[0].rename(columns={0: 'example'})
         else:
-            print('Example load failed')
-            print(df)
+            print('\n\tExample load failed')
+            print(df, end='')
             return ''
 
         soup = BeautifulSoup(res, 'lxml')
@@ -143,7 +153,8 @@ class KoreaUniversityCorpusSearcher:
         sent_ids = list(filter(
             None.__ne__,
             map(lambda row:
-                int(self.sent_id_parser.search(row.attrs['onclick']).group(1)) if 'onclick' in row.attrs
+                int(self.sent_id_parser.search(row.attrs['onclick']).group(1))
+                if ('onclick' in row.attrs) and (len(row.text.replace('\n', '')) > 0)  # empty row removed.
                 else None,
                 soup.body.find_all('tr'))
         ))
@@ -151,18 +162,21 @@ class KoreaUniversityCorpusSearcher:
         example_df['eg_id'] = sent_ids
         example_df['wisdom'] = word
 
-        example_df['legit'] = example_df[['wisdom', 'eg']] \
-            .apply(lambda x: _filter_word_not_mentioned(x.wisdom, x.eg), axis=1)
+        # example_df['legit'] = example_df[['wisdom', 'example']] \
+        #     .apply(lambda x: _filter_word_not_mentioned(x.wisdom, x.example), axis=1)
+        #
+        # example_df = example_df[example_df['legit']]
 
-
-        example_df = example_df[example_df['legit']]
-
-        return example_df[['wisdom', 'eg_id', 'eg']]
+        return example_df[['wisdom', 'eg_id', 'example']]
 
     def get_total_data_of(self, word: str, is_manual: bool) -> [str, pd.DataFrame]:
         df = self.get_examples_of(word, is_manual)
         if len(df) > 0:
             print('(egs: {count})\n\t-> base eg loaded'.format(count=len(df)), end=' ')
+
+            df['example_morph'] = df[['eg_id']] \
+                .apply(lambda x: self.get_morph_analysis(x), axis=1)
+            print('-> ex_morph loaded', end=' ')
 
             df['prev'] = df[['eg_id']] \
                 .apply(lambda x: self.get_close_contexts(x - 1), axis=1)
@@ -176,7 +190,8 @@ class KoreaUniversityCorpusSearcher:
                 .apply(lambda x: self.get_full_text(x), axis=1)
             print('-> full text loaded', end=' ')
 
-            df = df[['wisdom', 'eg_id', 'prev', 'eg', 'next', 'full']]
+            df['date'] = datetime.today().date()
+            df['origin'] = 'KoreaUnivCorpus'
 
             return df
         return ''
@@ -213,6 +228,23 @@ def get_korea_university_corpus_result(target_dictionary: str):
         print()
 
 
+def save_korea_university_corpus_result(of: str):
+    corpusSearcher = KoreaUniversityCorpusSearcher()
+
+    wisdoms = controller.get_df_from_sql(target_query=f"select distinct wisdom from definition where origin='{of}'")[
+        'wisdom'].tolist()
+
+    for idx, wisdom in enumerate(wisdoms):
+        print('current({}/{}):'.format(idx + 1, len(wisdoms)), wisdom, end=' ')
+        examples_df = corpusSearcher.get_total_data_of(wisdom, is_manual=False)
+        if len(examples_df) > 0:
+            examples_df['wisdom_from'] = of
+            controller.save_df_to_sql(origin_df=examples_df, target_table_name='example',
+                                      if_exists='append', index=False)
+
+        print()
+
+
 def manual_download(target_dictionary: str, word: str):
     corpusSearcher = KoreaUniversityCorpusSearcher()
 
@@ -229,4 +261,6 @@ def manual_download(target_dictionary: str, word: str):
 
 if __name__ == '__main__':
     # get_korea_university_corpus_result('egs')
-    manual_download('egs', '산/NNG&넘/VV&어/EM&산/NNG')
+    # manual_download('egs', '산/NNG&넘/VV&어/EM&산/NNG')
+
+    save_korea_university_corpus_result('wikiquote')
