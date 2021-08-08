@@ -90,14 +90,14 @@ class KoreaUniversityCorpusSearcher:
 
     def get_total_eg_length(self, query_word) -> int:
         data = self._get_list_sentence_request_body(target_word=query_word, page_num=1)
-        data['listSize'] = 10
+        data['listSize'] = 100
         res = requests.post(url=self.sentence_view_url,
                             headers=self._get_base_fake_header(),
                             data=data) \
             .content \
             .decode('utf-8')
-
-        return int(BeautifulSoup(res, 'lxml').body.find('font').text)
+        soupBody = BeautifulSoup(res, 'lxml').body
+        return int(soupBody.find('font').text) if soupBody.find('font') else 0
 
     def get_examples_of(self, word: str, is_manual: bool) -> [str, pd.DataFrame]:
         def _get_words_counts(word: str, which: str):
@@ -287,4 +287,4 @@ if __name__ == '__main__':
     # save_korea_university_corpus_result('wikiquote')
 
     test = KoreaUniversityCorpusSearcher()
-    test.get_total_eg_length('궁/NNG&통하/VV')
+    test.get_total_eg_length('가게/NNG&기둥/NNG&입춘/NNG')
