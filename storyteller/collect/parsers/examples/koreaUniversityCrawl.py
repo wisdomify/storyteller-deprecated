@@ -31,10 +31,10 @@ class KoreaUniversityCorpusSearcher:
         self.news_view_url = self._base_url + 'NewsView.php'
 
     @staticmethod
-    def _get_list_sentence_request_body(target_word: str):
+    def _get_list_sentence_request_body(target_word: str, page_num: int = 1) -> dict:
         return {
-            'listSize': 200,
-            'page': 1,
+            'listSize': 50,
+            'page': page_num,
             'unit': 'm',
             'keyword': target_word,
             'x': 8,
@@ -44,26 +44,26 @@ class KoreaUniversityCorpusSearcher:
         }
 
     @staticmethod
-    def _get_morph_news_request_base_body(sent_id: int):
+    def _get_morph_news_request_base_body(sent_id: int) -> dict:
         return {
             'sent_id': sent_id,
             'year': 'all',
             'Content-Type': 'multipart/form-data'
         }
 
-    def _get_base_fake_header(self):
+    def _get_base_fake_header(self) -> dict:
         return {
             'Origin': self._corpus_url,
             'Referer': self._base_url + 'search.php?keyword=&year='
         }
 
-    def _get_news_fake_header(self):
+    def _get_news_fake_header(self) -> dict:
         return {
             'Origin': self._corpus_url,
             'Referer': self.morph_analysis_view_url
         }
 
-    def get_full_text(self, word_id):
+    def get_full_text(self, word_id) -> str:
         res = requests.post(url=self.news_view_url,
                             headers=self._get_news_fake_header(),
                             data=self._get_morph_news_request_base_body(word_id)) \
@@ -72,7 +72,7 @@ class KoreaUniversityCorpusSearcher:
 
         return pd.read_html(res)[0][0].str.cat(sep=' /n')
 
-    def get_morph_analysis(self, word_id):
+    def get_morph_analysis(self, word_id) -> str:
         res = requests.post(url=self.morph_analysis_view_url,
                             headers=self._get_base_fake_header(),
                             data=self._get_morph_news_request_base_body(word_id)) \
@@ -80,13 +80,24 @@ class KoreaUniversityCorpusSearcher:
             .decode('utf-8')
         return pd.read_html(res)[2][1].str.cat(sep='+').replace("'", "")
 
-    def get_close_contexts(self, prev_id):
+    def get_close_contexts(self, prev_id) -> str:
         res = requests.post(url=self.morph_analysis_view_url,
                             headers=self._get_base_fake_header(),
                             data=self._get_morph_news_request_base_body(prev_id)) \
             .content \
             .decode('utf-8')
         return pd.read_html(res)[1].iloc[0].to_string().split('    ')[-1]
+
+    def get_total_eg_length(self, query_word) -> int:
+        data = self._get_list_sentence_request_body(target_word=query_word, page_num=1)
+        data['listSize'] = 10
+        res = requests.post(url=self.sentence_view_url,
+                            headers=self._get_base_fake_header(),
+                            data=data) \
+            .content \
+            .decode('utf-8')
+
+        return int(BeautifulSoup(res, 'lxml').body.find('font').text)
 
     def get_examples_of(self, word: str, is_manual: bool) -> [str, pd.DataFrame]:
         def _get_words_counts(word: str, which: str):
@@ -123,51 +134,61 @@ class KoreaUniversityCorpusSearcher:
                               target_counts.items()
                               )
                           )
+
         if is_manual:
             query_word = word
+
         else:
             query_word = self.morph_analyzer.get_query_format_of(word=word)
 
         print(' ->', query_word, end=' ')
-        res = requests.post(url=self.sentence_view_url,
-                            headers=self._get_base_fake_header(),
-                            data=self._get_list_sentence_request_body(target_word=query_word))
+        total_sents = self.get_total_eg_length(query_word)
+        total_df = pd.DataFrame()
+        for p in range(1, total_sents // 50 + 2):
+            print('.', end='')
+            res = requests.post(url=self.sentence_view_url,
+                                headers=self._get_base_fake_header(),
+                                data=self._get_list_sentence_request_body(target_word=query_word, page_num=p))
 
-        if res.status_code != HTTPStatus.OK:
-            print('NO EXAMPLE', end=' ')
-            return ''
+            if res.status_code != HTTPStatus.OK:
+                print('NO EXAMPLE', end=' ')
+                return ''
 
-        res = res.content \
-            .decode('utf-8')
+            res = res.content \
+                .decode('utf-8')
 
-        df = pd.read_html(res)
-        if len(df) > 0:
-            example_df = df[0].rename(columns={0: 'example'})
-        else:
-            print('\n\tExample load failed')
-            print(df, end='')
-            return ''
+            df = pd.read_html(res)
+            if len(df) > 0:
+                example_df = df[0].rename(columns={0: 'example'})
+            else:
+                print('\n\tExample load failed')
+                print(df, end='')
+                return ''
 
-        soup = BeautifulSoup(res, 'lxml')
+            soup = BeautifulSoup(res, 'lxml')
 
-        sent_ids = list(filter(
-            None.__ne__,
-            map(lambda row:
-                int(self.sent_id_parser.search(row.attrs['onclick']).group(1))
-                if ('onclick' in row.attrs) and (len(row.text.replace('\n', '')) > 0)  # empty row removed.
-                else None,
-                soup.body.find_all('tr'))
-        ))
+            sent_ids = list(filter(
+                None.__ne__,
+                map(lambda row:
+                    int(self.sent_id_parser.search(row.attrs['onclick']).group(1))
+                    if ('onclick' in row.attrs)
+                    and (len(row.text.replace('\n', '')) > 0)  # empty row removed.
+                    and self.sent_id_parser.search(row.attrs['onclick']) is not None
+                    else None,
+                    soup.body.find_all('tr'))
+            ))
 
-        example_df['eg_id'] = sent_ids
-        example_df['wisdom'] = word
+            example_df['eg_id'] = sent_ids
+            example_df['wisdom'] = word
+
+            total_df = total_df.append(example_df)
 
         # example_df['legit'] = example_df[['wisdom', 'example']] \
         #     .apply(lambda x: _filter_word_not_mentioned(x.wisdom, x.example), axis=1)
         #
         # example_df = example_df[example_df['legit']]
-
-        return example_df[['wisdom', 'eg_id', 'example']]
+        print()
+        return total_df[['wisdom', 'eg_id', 'example']]
 
     def get_total_data_of(self, word: str, is_manual: bool) -> [str, pd.DataFrame]:
         df = self.get_examples_of(word, is_manual)
@@ -263,4 +284,7 @@ if __name__ == '__main__':
     # get_korea_university_corpus_result('egs')
     # manual_download('egs', '산/NNG&넘/VV&어/EM&산/NNG')
 
-    save_korea_university_corpus_result('wikiquote')
+    # save_korea_university_corpus_result('wikiquote')
+
+    test = KoreaUniversityCorpusSearcher()
+    test.get_total_eg_length('궁/NNG&통하/VV')
