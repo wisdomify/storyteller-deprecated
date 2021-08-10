@@ -99,7 +99,8 @@ class KoreaUniversityCorpusSearcher:
         soupBody = BeautifulSoup(res, 'lxml').body
         return int(soupBody.find('font').text) if soupBody.find('font') else 0
 
-    def get_examples_of(self, word: str, is_manual: bool) -> [str, pd.DataFrame]:
+    def get_examples_of(self, word: str, page_num: int,
+                        is_manual: bool) -> [str, pd.DataFrame]:
         def _get_words_counts(word: str, which: str):
             # 문장에서 특수 문자를 거른 뒤에 구문분석 (특수문자랑 붙어있는 경우 해당 글자가 스킵되기도 함.)
             word = re.sub('\s+', ' ', re.sub('[^A-Za-z0-9가-힣\s]', ' ', word))
@@ -142,56 +143,59 @@ class KoreaUniversityCorpusSearcher:
             query_word = self.morph_analyzer.get_query_format_of(word=word)
 
         print(' ->', query_word, end=' ')
-        total_sents = self.get_total_eg_length(query_word)
-        total_df = pd.DataFrame()
-        for p in range(1, total_sents // 50 + 2):
-            print('.', end='')
-            res = requests.post(url=self.sentence_view_url,
-                                headers=self._get_base_fake_header(),
-                                data=self._get_list_sentence_request_body(target_word=query_word, page_num=p))
 
-            if res.status_code != HTTPStatus.OK:
-                print('NO EXAMPLE', end=' ')
-                return ''
+        res = requests.post(url=self.sentence_view_url,
+                            headers=self._get_base_fake_header(),
+                            data=self._get_list_sentence_request_body(target_word=query_word, page_num=page_num))
 
-            res = res.content \
-                .decode('utf-8')
+        if res.status_code != HTTPStatus.OK:
+            print('NO EXAMPLE', end=' ')
+            return ''
 
-            df = pd.read_html(res)
-            if len(df) > 0:
-                example_df = df[0].rename(columns={0: 'example'})
-            else:
-                print('\n\tExample load failed')
-                print(df, end='')
-                return ''
+        res = res.content \
+            .decode('utf-8')
 
-            soup = BeautifulSoup(res, 'lxml')
+        soup = BeautifulSoup(res, 'lxml')
 
-            sent_ids = list(filter(
-                None.__ne__,
-                map(lambda row:
-                    int(self.sent_id_parser.search(row.attrs['onclick']).group(1))
-                    if ('onclick' in row.attrs)
-                    and (len(row.text.replace('\n', '')) > 0)  # empty row removed.
-                    and self.sent_id_parser.search(row.attrs['onclick']) is not None
-                    else None,
-                    soup.body.find_all('tr'))
-            ))
+        if len(soup.body.text.replace('\n', '')) == 0:
+            print('\n\tExample load failed')
+            return ''
 
-            example_df['eg_id'] = sent_ids
-            example_df['wisdom'] = word
+        df = pd.read_html(res)
 
-            total_df = total_df.append(example_df)
+        if len(df) > 0:
+            example_df = df[0].rename(columns={0: 'example'})
+        else:
+            print('\n\tExample load failed')
+            print(df, end='')
+            return ''
+
+        sent_ids = list(filter(
+            None.__ne__,
+            map(lambda row:
+                int(self.sent_id_parser.search(row.attrs['onclick']).group(1))
+                if ('onclick' in row.attrs)
+                   and (len(row.text.replace('\n', '')) > 0)  # empty row removed.
+                   and self.sent_id_parser.search(row.attrs['onclick']) is not None
+                else None,
+                soup.body.find_all('tr'))
+        ))
+        if len(example_df) != len(sent_ids):
+            print('\n\tExample load failed')
+            return ''
+
+        example_df['eg_id'] = sent_ids
+        example_df['wisdom'] = word
 
         # example_df['legit'] = example_df[['wisdom', 'example']] \
         #     .apply(lambda x: _filter_word_not_mentioned(x.wisdom, x.example), axis=1)
         #
         # example_df = example_df[example_df['legit']]
         print()
-        return total_df[['wisdom', 'eg_id', 'example']]
+        return example_df[['wisdom', 'eg_id', 'example']]
 
-    def get_total_data_of(self, word: str, is_manual: bool) -> [str, pd.DataFrame]:
-        df = self.get_examples_of(word, is_manual)
+    def get_total_data_of(self, word: str, is_manual: bool, page_num) -> [str, pd.DataFrame]:
+        df = self.get_examples_of(word, page_num, is_manual)
         if len(df) > 0:
             print('(egs: {count})\n\t-> base eg loaded'.format(count=len(df)), end=' ')
 
@@ -256,12 +260,19 @@ def save_korea_university_corpus_result(of: str):
         'wisdom'].tolist()
 
     for idx, wisdom in enumerate(wisdoms):
+        if idx < 212:
+            continue
+
         print('current({}/{}):'.format(idx + 1, len(wisdoms)), wisdom, end=' ')
-        examples_df = corpusSearcher.get_total_data_of(wisdom, is_manual=False)
-        if len(examples_df) > 0:
-            examples_df['wisdom_from'] = of
-            controller.save_df_to_sql(origin_df=examples_df, target_table_name='example',
-                                      if_exists='append', index=False)
+        total_sents = corpusSearcher.get_total_eg_length(corpusSearcher.morph_analyzer.get_query_format_of(word=wisdom))
+        for p in range(1, total_sents // 50 + 2):
+            examples_df = corpusSearcher.get_total_data_of(wisdom, is_manual=False, page_num=p)
+
+            if len(examples_df) > 0:
+                examples_df['wisdom_from'] = of
+                controller.save_df_to_sql(origin_df=examples_df, target_table_name='example',
+                                          if_exists='append', index=False)
+            print()
 
         print()
 
@@ -284,7 +295,7 @@ if __name__ == '__main__':
     # get_korea_university_corpus_result('egs')
     # manual_download('egs', '산/NNG&넘/VV&어/EM&산/NNG')
 
-    # save_korea_university_corpus_result('wikiquote')
+    save_korea_university_corpus_result('namuwiki')
 
-    test = KoreaUniversityCorpusSearcher()
-    test.get_total_eg_length('가게/NNG&기둥/NNG&입춘/NNG')
+    # test = KoreaUniversityCorpusSearcher()
+    # test.get_total_eg_length('가게/NNG&기둥/NNG&입춘/NNG')

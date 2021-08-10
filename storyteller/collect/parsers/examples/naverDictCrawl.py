@@ -89,4 +89,4 @@ def save_naverdict_examples(of: str):
 
 
 if __name__ == '__main__':
-    save_naverdict_examples(of='wikiquote')
+    save_naverdict_examples(of='namuwiki')

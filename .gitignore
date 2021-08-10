@@ -1,4 +1,7 @@
-data
+data/version_*
+data/definitions
+data/examples
+
 *.csv
 */tmp.py
 
