@@ -260,9 +260,6 @@ def save_korea_university_corpus_result(of: str):
         'wisdom'].tolist()
 
     for idx, wisdom in enumerate(wisdoms):
-        if idx < 212:
-            continue
-
         print('current({}/{}):'.format(idx + 1, len(wisdoms)), wisdom, end=' ')
         total_sents = corpusSearcher.get_total_eg_length(corpusSearcher.morph_analyzer.get_query_format_of(word=wisdom))
         for p in range(1, total_sents // 50 + 2):
