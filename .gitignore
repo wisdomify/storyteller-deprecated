@@ -1,6 +1,5 @@
-data/version_*
-data/definitions
-data/examples
+story
+data
 
 *.csv
 */tmp.py
