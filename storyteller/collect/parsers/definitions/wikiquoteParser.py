@@ -1,9 +1,11 @@
+from datetime import datetime
+
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 import pandas as pd
 from functools import reduce
 
-from storyteller import paths
+from storyteller.collect.utils.DBConnector import controller
 
 
 def get_html_from(link: str, target: str) -> pd.DataFrame:
@@ -28,9 +30,13 @@ def get_html_from(link: str, target: str) -> pd.DataFrame:
 
     driver.quit()
 
-    return pd.DataFrame(all_results, columns=['wisdom', 'def_1'])
+    return pd.DataFrame(all_results, columns=['wisdom', 'definition'])
 
 
-def get_wikiquote_definitions():
-    get_html_from('https://ko.wikiquote.org/wiki/가나다순_한국_속담', 'mw-parser-output').to_csv(
-        paths.DATA_DIR + '/definitions/wikiquote.csv')
+def save_wikiquote_definitions():
+    df = get_html_from('https://ko.wikiquote.org/wiki/가나다순_한국_속담', 'mw-parser-output')
+    df['origin'] = 'wikiquote'
+    df['date'] = datetime.today().date()
+
+    controller.save_df_to_sql(origin_df=df,
+                              target_table_name='definition', if_exists='append', index=False)

@@ -1,7 +1,10 @@
+from datetime import datetime
+
 import pandas as pd
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 
+from storyteller.collect.utils.DBConnector import controller
 from storyteller.collect.utils.proverbUtils import get_proverbs
 from storyteller.paths import DATA_DIR
 
@@ -44,14 +47,23 @@ def get_examples_of(word: str):
         count += 1
 
     driver.quit()
-    eg_df = pd.DataFrame(egs, columns=['eg'])
+    eg_df = pd.DataFrame(egs, columns=['example'])
     eg_df['wisdom'] = word
-    eg_df = eg_df[['wisdom', 'eg']]
+    eg_df = eg_df[['wisdom', 'example']]
+
+    eg_df['date'] = datetime.today().date()
+    eg_df['origin'] = 'naverDict'
+    eg_df['eg_id'] = None
+    eg_df['example_morph'] = None
+    eg_df['prev'] = None
+    eg_df['next'] = None
+    eg_df['full'] = None
+
     return eg_df
 
 
 def get_naverdict_examples_from(target_dictionary: str):
-    wisdoms = get_proverbs(target_csv=target_dictionary+'.csv')
+    wisdoms = get_proverbs(target_csv=target_dictionary + '.csv')
 
     base_df = pd.DataFrame()
     for idx, wisdom in enumerate(wisdoms):
@@ -63,5 +75,18 @@ def get_naverdict_examples_from(target_dictionary: str):
     base_df.to_csv(DATA_DIR + '/examples/{}_naver.csv'.format(target_dictionary))
 
 
+def save_naverdict_examples(of: str):
+    wisdoms = controller.get_df_from_sql(target_query=f"select distinct wisdom from definition where origin='{of}'")['wisdom'].tolist()
+
+    for idx, wisdom in enumerate(wisdoms):
+        print('current({}/{}):'.format(idx + 1, len(wisdoms)), wisdom, '=>', end='')
+        examples_df = get_examples_of(wisdom)
+        if len(examples_df) > 0:
+            examples_df['wisdom_from'] = of
+            controller.save_df_to_sql(origin_df=examples_df, target_table_name='example',
+                                      if_exists='append', index=False)
+        print()
+
+
 if __name__ == '__main__':
-    ...
+    save_naverdict_examples(of='namuwiki')

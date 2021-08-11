@@ -27,14 +27,12 @@ The format of .env file should be like:
 
 ~~~.env
 opendict_api="{your api token}"
-gw_username="{SSH gateway instance username}"
-gw_host="{SSH gateway instance address}"
-gw_pkey="{SSH gateway instance ssh public key}"
-gw_port="{SSH gateway instance's ssh port}"
+
 db_username="{Database username}"
 db_host="{Database internal address}"
 db_password="{Database password}"
 db_port="{Database port}"
+
 storyteller_schema="{storyteller's schema name}"
 ~~~
 
