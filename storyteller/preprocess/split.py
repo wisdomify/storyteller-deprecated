@@ -13,7 +13,7 @@ def split_and_save(data_path: str,
                    ):
     """
     The data path will be form of
-    {data_dir}/raw/{data_name}.{file_format}
+    {data_dir}/{version}/raw/{data_name}.{file_format}
 
     Then the split data will be stored on {data_dir}/.
     Final output includes .tsv files and .zip files
@@ -40,6 +40,9 @@ def split_and_save(data_path: str,
     - val_{DATA}.tsv
     - test_{DATA}.tsv
     """
+    if 'raw' not in data_path:
+        raise ValueError("data path should be {data_dir}/{version}/raw/{data_name}.{file_format}."
+                         "\nYou have written:", data_path)
 
     data_name = ''.join(data_path.split('/')[-1].split('.')[:-1])
     data_dir = '/'.join(data_path.split('/')[:-2])
