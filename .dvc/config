@@ -2,4 +2,3 @@
     remote = platanus_bucket
 ['remote "platanus_bucket"']
     url = s3://platanus.bucket/story/
-    region = ap-northeast-2
