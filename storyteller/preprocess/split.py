@@ -4,6 +4,8 @@ import zipfile
 import pandas as pd
 from sklearn.model_selection import train_test_split
 
+from storyteller.paths import DATA_DIR
+
 
 def split_and_save(data_path: str,
                    train_portion: int, validation_portion: int, test_portion: int,
@@ -110,8 +112,11 @@ def make_zip_files(data_path, dty):
 
 
 if __name__ == '__main__':
-    split_and_save('study/dataset/version_0.0.0/raw/wisdom2def.tsv', 80, 10, 10)
-    make_zip_files('study/dataset/version_0.0.0', 'definition')
+    ver_dir = os.path.join(DATA_DIR, 'version_1/')
 
-    split_and_save('study/dataset/version_0.0.0/raw/wisdom2eg.tsv', 80, 10, 10)
-    make_zip_files('study/dataset/version_0.0.0', 'example')
+    split_and_save(os.path.join(ver_dir, 'raw/wisdom2def.tsv'), 80, 10, 10)
+    make_zip_files(ver_dir, 'definition')
+    print()
+
+    split_and_save(os.path.join(ver_dir, 'raw/wisdom2eg.tsv'), 80, 10, 10)
+    make_zip_files(ver_dir, 'example')
