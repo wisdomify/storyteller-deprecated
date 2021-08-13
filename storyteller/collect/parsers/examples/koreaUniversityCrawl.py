@@ -86,7 +86,8 @@ class KoreaUniversityCorpusSearcher:
                             data=self._get_morph_news_request_base_body(prev_id)) \
             .content \
             .decode('utf-8')
-        return pd.read_html(res)[1].iloc[0].to_string().split('    ')[-1]
+
+        return BeautifulSoup(res, 'lxml').body.find_all('td')[3].text.replace('\n', '')
 
     def get_total_eg_length(self, query_word) -> int:
         data = self._get_list_sentence_request_body(target_word=query_word, page_num=1)
@@ -244,6 +245,7 @@ def get_korea_university_corpus_result(target_dictionary: str):
             is_save_destination_exist = os.path.isfile(save_location)
         print('current({}/{}):'.format(idx + 1, len(wisdoms)), wisdom, end=' ')
         examples_df = corpusSearcher.get_total_data_of(wisdom, is_manual=False)
+
         if len(examples_df) > 0:
             if is_save_destination_exist:
                 examples_df.to_csv(save_location, mode='a', header=False)
@@ -292,7 +294,7 @@ if __name__ == '__main__':
     # get_korea_university_corpus_result('egs')
     # manual_download('egs', '산/NNG&넘/VV&어/EM&산/NNG')
 
-    save_korea_university_corpus_result('namuwiki')
+    save_korea_university_corpus_result('wikiquote')
 
     # test = KoreaUniversityCorpusSearcher()
     # test.get_total_eg_length('가게/NNG&기둥/NNG&입춘/NNG')
