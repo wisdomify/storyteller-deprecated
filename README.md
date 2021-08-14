@@ -73,32 +73,11 @@ Now the project structure should be look like the following.
     ├── secrets.py
     └── tests
 ~~~
-Your storyteller gives you:
-~~~bash
-python3 -m storyteller.main.dl_data --{arg} {arg value}
-~~~
+Your storyteller gives you the raw data with dvc:
+Therefore, you must install dvc.
 
-Arguments:
-* which (which type of data do you want to be heard?)
-    * definition (default)
-    * example
-* where (you are calling the data from)
-    * (if which is **definition**)
-        * wikiquote (default)
-        * namuwiki
-        * opendict
-    * (if which is **example**)
-        * naverdict (default)
-        * daumdict
-        * koreauniveristy 
-        * corpuskorean
-        * kaist
-* target (if which is example, which proverbs do you want to download)
-    * wikiquote (default)
-    * namuwiki
-    * opendict
-
-Example
 ~~~bash
-python3 -m storyteller.main.dl_data --which example --where daumdict --target wikiquote
+pip install 'dvc[s3]'
+dvc pull
 ~~~
+Then you will be able to see the data on `./data`
