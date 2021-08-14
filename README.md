@@ -75,9 +75,20 @@ Now the project structure should be look like the following.
 ~~~
 Your storyteller gives you the raw data with dvc:
 Therefore, you must install dvc.
+In addition, this repository uses AWS S3 as remote storage for dvc. So, you must add the aws credential information on your system.
+
+~~~bash
+pip install awscli
+aws configure
+// For credential information, request to repository owner.
+// Default region name [None]:  ap-northeast-2
+// Default output format [None]: json
+~~~
 
 ~~~bash
 pip install 'dvc[s3]'
 dvc pull
 ~~~
 Then you will be able to see the data on `./data`
+
+
