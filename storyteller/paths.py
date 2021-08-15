@@ -7,3 +7,7 @@ from os import path
 # The directories
 PACKAGE_ROOT = Path(__file__).resolve().parent.parent.__str__()
 DATA_DIR = path.join(PACKAGE_ROOT, "data")
+
+
+# temporary path
+FROM_DB_WISDOM2EG_TSV = path.join(DATA_DIR, "version_1", "from_db", "wisdom2eg.tsv")
