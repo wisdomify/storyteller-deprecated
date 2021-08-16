@@ -9,10 +9,11 @@ class DBController:
                  user: str,
                  password: str,
                  address: str,
-                 database: str
+                 database: str,
+                 charset: str = 'utf8mb4',
                  ):
-        self._target_server = 'mysql+mysqldb://{user}:{pw}@{addr}/{db}' \
-            .format(user=user, pw=password, addr=address, db=database)
+        self._target_server = 'mysql+mysqldb://{user}:{pw}@{addr}/{db}?charset={charset}' \
+            .format(user=user, pw=password, addr=address, db=database, charset=charset)
 
     def _get_engine(self):
         return create_engine(self._target_server, encoding='utf-8')
