@@ -4,7 +4,7 @@ from storyteller.paths import DATA_DIR
 
 
 def get_proverbs(target_csv: str):
-    return sorted(set(pd.read_csv(DATA_DIR+'/definitions/'+target_csv)['wisdom']))
+    return sorted(set(pd.read_csv(DATA_DIR+'/legacy/definitions/'+target_csv)['wisdom']))
 
 
 def get_target_proverbs(downloaded: list, proverbs: list):

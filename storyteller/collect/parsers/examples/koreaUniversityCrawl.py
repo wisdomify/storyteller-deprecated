@@ -231,7 +231,7 @@ def get_korea_university_corpus_result(target_dictionary: str):
 
     corpusSearcher = KoreaUniversityCorpusSearcher()
 
-    save_location = DATA_DIR + '/examples/{}_koreaUniv.csv'.format(target_dictionary)
+    save_location = DATA_DIR + '/legacy/examples/{}_koreaUniv.csv'.format(target_dictionary)
     is_save_destination_exist = os.path.isfile(save_location)
 
     raw_wisdoms = get_proverbs(target_csv=target_dictionary + '.csv')
@@ -244,13 +244,15 @@ def get_korea_university_corpus_result(target_dictionary: str):
         if idx != 0:
             is_save_destination_exist = os.path.isfile(save_location)
         print('current({}/{}):'.format(idx + 1, len(wisdoms)), wisdom, end=' ')
-        examples_df = corpusSearcher.get_total_data_of(wisdom, is_manual=False)
+        total_sents = corpusSearcher.get_total_eg_length(corpusSearcher.morph_analyzer.get_query_format_of(word=wisdom))
+        for p in range(1, total_sents // 50 + 2):
+            examples_df = corpusSearcher.get_total_data_of(wisdom, is_manual=False, page_num=p)
 
-        if len(examples_df) > 0:
-            if is_save_destination_exist:
-                examples_df.to_csv(save_location, mode='a', header=False)
-            else:
-                examples_df.to_csv(save_location)
+            if len(examples_df) > 0:
+                if is_save_destination_exist:
+                    examples_df.to_csv(save_location, mode='a', header=False)
+                else:
+                    examples_df.to_csv(save_location)
 
         print()
 
@@ -264,7 +266,9 @@ def save_korea_university_corpus_result(of: str):
     for idx, wisdom in enumerate(wisdoms):
         print('current({}/{}):'.format(idx + 1, len(wisdoms)), wisdom, end=' ')
         total_sents = corpusSearcher.get_total_eg_length(corpusSearcher.morph_analyzer.get_query_format_of(word=wisdom))
+        print(f" -> total: {total_sents}", end='')
         for p in range(1, total_sents // 50 + 2):
+            print(f"{p}/{total_sents // 50 + 1}")
             examples_df = corpusSearcher.get_total_data_of(wisdom, is_manual=False, page_num=p)
 
             if len(examples_df) > 0:
@@ -292,9 +296,11 @@ def manual_download(target_dictionary: str, word: str):
 
 if __name__ == '__main__':
     # get_korea_university_corpus_result('egs')
+    # print("a")
+    # get_korea_university_corpus_result('egs')
     # manual_download('egs', '산/NNG&넘/VV&어/EM&산/NNG')
 
-    save_korea_university_corpus_result('wikiquote')
+    save_korea_university_corpus_result('namuwiki')
 
     # test = KoreaUniversityCorpusSearcher()
     # test.get_total_eg_length('가게/NNG&기둥/NNG&입춘/NNG')
