@@ -2,6 +2,8 @@ import json
 import multiprocessing
 import os
 import re
+import sys
+import time
 from datetime import datetime
 from functools import reduce, partial
 from multiprocessing import Manager
@@ -21,7 +23,7 @@ from storyteller.paths import DATA_DIR
 
 class KoreaUniversityCorpusSearcher:
     def __init__(self):
-        # self.morph_analyzer = MorphAnalyzer()
+        self.morph_analyzer = MorphAnalyzer()
         self.sent_id_parser = re.compile(r"showAnalysis\('(\d*)'\)")
 
         self._corpus_url = 'http://corpus.korea.ac.kr'
@@ -66,41 +68,60 @@ class KoreaUniversityCorpusSearcher:
         }
 
     def get_full_text(self, word_id) -> str:
-        res = requests.post(url=self.news_view_url,
-                            headers=self._get_news_fake_header(),
-                            data=self._get_morph_news_request_base_body(word_id)) \
-            .content \
-            .decode('utf-8')
+        try:
+            res = requests.post(url=self.news_view_url,
+                                headers=self._get_news_fake_header(),
+                                data=self._get_morph_news_request_base_body(word_id)) \
+                .content \
+                .decode('utf-8')
+            return pd.read_html(res)[0][0].str.cat(sep=' /n')
 
-        return pd.read_html(res)[0][0].str.cat(sep=' /n')
+        except Exception:
+            time.sleep(1)
+            return self.get_full_text(word_id)
 
     def get_morph_analysis(self, word_id) -> str:
-        res = requests.post(url=self.morph_analysis_view_url,
-                            headers=self._get_base_fake_header(),
-                            data=self._get_morph_news_request_base_body(word_id)) \
-            .content \
-            .decode('utf-8')
-        return pd.read_html(res)[2][1].str.cat(sep='+').replace("'", "")
+        try:
+            res = requests.post(url=self.morph_analysis_view_url,
+                                headers=self._get_base_fake_header(),
+                                data=self._get_morph_news_request_base_body(word_id)) \
+                .content \
+                .decode('utf-8')
+
+            return pd.read_html(res)[2][1].str.cat(sep='+').replace("'", "")
+
+        except Exception:
+            time.sleep(1)
+            return self.get_morph_analysis(word_id)
 
     def get_close_contexts(self, prev_id) -> str:
-        res = requests.post(url=self.morph_analysis_view_url,
-                            headers=self._get_base_fake_header(),
-                            data=self._get_morph_news_request_base_body(prev_id)) \
-            .content \
-            .decode('utf-8')
+        try:
+            res = requests.post(url=self.morph_analysis_view_url,
+                                headers=self._get_base_fake_header(),
+                                data=self._get_morph_news_request_base_body(prev_id)) \
+                .content \
+                .decode('utf-8')
 
-        return BeautifulSoup(res, 'lxml').body.find_all('td')[3].text.replace('\n', '')
+            return BeautifulSoup(res, 'lxml').body.find_all('td')[3].text.replace('\n', '')
+        except:
+            time.sleep(1)
+            return self.get_close_contexts(prev_id)
 
     def get_total_eg_length(self, query_word) -> int:
         data = self._get_list_sentence_request_body(target_word=query_word, page_num=1)
         data['listSize'] = 100
-        res = requests.post(url=self.sentence_view_url,
-                            headers=self._get_base_fake_header(),
-                            data=data) \
-            .content \
-            .decode('utf-8')
-        soupBody = BeautifulSoup(res, 'lxml').body
-        return int(soupBody.find('font').text) if len(soupBody.find('font')) > 0 else 0
+        try:
+            res = requests.post(url=self.sentence_view_url,
+                                headers=self._get_base_fake_header(),
+                                data=data) \
+                .content \
+                .decode('utf-8')
+            soupBody = BeautifulSoup(res, 'lxml').body
+            return int(soupBody.find('font').text) if len(soupBody.find('font')) > 0 else 0
+
+        except:
+            time.sleep(1)
+            return self.get_total_eg_length(query_word)
 
     def get_examples_of(self, word: str, page_num: int,
                         is_manual: bool) -> [str, pd.DataFrame]:
@@ -161,7 +182,7 @@ class KoreaUniversityCorpusSearcher:
         soup = BeautifulSoup(res, 'lxml')
 
         if len(soup.body.text.replace('\n', '')) == 0:
-            print('\n\tExample load failed')
+            print('\n\tExample load failed-htmlwrong')
             return ''
 
         df = pd.read_html(res)
@@ -169,7 +190,7 @@ class KoreaUniversityCorpusSearcher:
         if len(df) > 0:
             example_df = df[0].rename(columns={0: 'example'})
         else:
-            print('\n\tExample load failed')
+            print('\n\tExample load failed-dfempty')
             print(df, end='')
             return ''
 
@@ -184,7 +205,7 @@ class KoreaUniversityCorpusSearcher:
                 soup.body.find_all('tr'))
         ))
         if len(example_df) != len(sent_ids):
-            print('\n\tExample load failed')
+            print('\n\tExample load failed-dflen')
             return ''
 
         example_df['eg_id'] = sent_ids
@@ -198,53 +219,44 @@ class KoreaUniversityCorpusSearcher:
         return example_df[['wisdom', 'eg_id', 'example']]
 
     def get_examples_of_parallel(self, word: str, page_num: int, query_word: str) -> [pd.DataFrame]:
-        # print(' ->', query_word, end=' ')
+        try:
+            res = requests.post(url=self.sentence_view_url,
+                                headers=self._get_base_fake_header(),
+                                data=self._get_list_sentence_request_body(target_word=query_word, page_num=page_num))
 
-        res = requests.post(url=self.sentence_view_url,
-                            headers=self._get_base_fake_header(),
-                            data=self._get_list_sentence_request_body(target_word=query_word, page_num=page_num))
+            res = res.content \
+                .decode('utf-8')
 
-        if res.status_code != HTTPStatus.OK:
-            print('NO EXAMPLE')
-            return ''
+            soup = BeautifulSoup(res, 'lxml')
+            df = pd.read_html(res)
 
-        res = res.content \
-            .decode('utf-8')
+            if len(df) > 0:
+                example_df = df[0].rename(columns={0: 'example'})
 
-        soup = BeautifulSoup(res, 'lxml')
+                sent_ids = list(filter(
+                    None.__ne__,
+                    map(lambda row:
+                        int(self.sent_id_parser.search(row.attrs['onclick']).group(1))
+                        if ('onclick' in row.attrs)
+                           and (len(row.text.replace('\n', '')) > 0)  # empty row removed.
+                           and self.sent_id_parser.search(row.attrs['onclick']) is not None
+                        else None,
+                        soup.body.find_all('tr'))
+                ))
 
-        if len(soup.body.text.replace('\n', '')) == 0:
-            print(f'Example load failed(soup-body_len): {word}, {page_num}')
-            return ''
+                example_df['eg_id'] = sent_ids
+                example_df['wisdom'] = word
 
-        df = pd.read_html(res)
+                return example_df[['wisdom', 'eg_id', 'example']]
 
-        if len(df) > 0:
-            example_df = df[0].rename(columns={0: 'example'})
-        else:
-            print(f'Example load failed (html-len): {word}, {page_num}')
-            # print(df, end='')
-            return ''
+            else:
+                print(f'Example load failed (html-len): {word}, {page_num}')
+                # print(df, end='')
+                return ''
 
-        sent_ids = list(filter(
-            None.__ne__,
-            map(lambda row:
-                int(self.sent_id_parser.search(row.attrs['onclick']).group(1))
-                if ('onclick' in row.attrs)
-                   and (len(row.text.replace('\n', '')) > 0)  # empty row removed.
-                   and self.sent_id_parser.search(row.attrs['onclick']) is not None
-                else None,
-                soup.body.find_all('tr'))
-        ))
-        if len(example_df) != len(sent_ids):
-            print('Example load failed (id, df not match)')
-            return ''
-
-        example_df['eg_id'] = sent_ids
-        example_df['wisdom'] = word
-
-        # print()
-        return example_df[['wisdom', 'eg_id', 'example']]
+        except:
+            time.sleep(1)
+            return self.get_examples_of_parallel(word, page_num, query_word)
 
     def get_total_data_of(self, word: str, is_manual: bool, page_num) -> [pd.DataFrame]:
         df = self.get_examples_of(word, page_num, is_manual)
@@ -276,22 +288,47 @@ class KoreaUniversityCorpusSearcher:
     def get_total_data_of_parallel(self, word: str, query_word: str, page_num) -> [pd.DataFrame]:
         df = self.get_examples_of_parallel(word, page_num, query_word)
         if len(df) > 0:
-            # print('(egs: {count})\n\t-> base eg loaded'.format(count=len(df)), end=' ')
-            df['example_morph'] = df[['eg_id']] \
-                .apply(lambda x: self.get_morph_analysis(x), axis=1)
-            # print('-> ex_morph loaded', end=' ')
+            print(f'{multiprocessing.current_process().name}'
+                  f'\t-> current_word: {word}, current_page: {page_num} ==>  base eg loaded')
+            try:
+                df['example_morph'] = df[['eg_id']] \
+                    .apply(lambda x: self.get_morph_analysis(x), axis=1)
+                print(f'{multiprocessing.current_process().name}'
+                      f'\t-> current_word: {word}, current_page: {page_num} ==>  ex_morph_loaded')
+            except Exception as e:
+                print(f'{e} ===>{multiprocessing.current_process().name}\n'
+                      f'{multiprocessing.current_process().name}'
+                      f'\t-> current_word: {word}, current_page: {page_num} ==>  ex_morph_failed')
 
-            df['prev'] = df[['eg_id']] \
-                .apply(lambda x: self.get_close_contexts(x - 1), axis=1)
-            # print('-> prev loaded', end=' ')
+            try:
+                df['prev'] = df[['eg_id']] \
+                    .apply(lambda x: self.get_close_contexts(x - 1), axis=1)
+                print(f'{multiprocessing.current_process().name}'
+                      f'\t-> current_word: {word}, current_page: {page_num} ==>  prev_loaded')
+            except Exception as e:
+                print(f'{e} ===>{multiprocessing.current_process().name}\n'
+                      f'{multiprocessing.current_process().name}'
+                      f'\t-> current_word: {word}, current_page: {page_num} ==>  prev_failed')
 
-            df['next'] = df[['eg_id']] \
-                .apply(lambda x: self.get_close_contexts(x + 1), axis=1)
-            # print('-> next loaded', end=' ')
+            try:
+                df['next'] = df[['eg_id']] \
+                    .apply(lambda x: self.get_close_contexts(x + 1), axis=1)
+                print(f'{multiprocessing.current_process().name}'
+                      f'\t-> current_word: {word}, current_page: {page_num} ==>  next_loaded')
+            except Exception as e:
+                print(f'{e} ===>{multiprocessing.current_process().name}\n'
+                      f'{multiprocessing.current_process().name}'
+                      f'\t-> current_word: {word}, current_page: {page_num} ==>  next_failed')
 
-            df['full'] = df[['eg_id']] \
-                .apply(lambda x: self.get_full_text(x), axis=1)
-            # print('-> full text loaded', end=' ')
+            try:
+                df['full'] = df[['eg_id']] \
+                    .apply(lambda x: self.get_full_text(x), axis=1)
+                print(f'{multiprocessing.current_process().name}'
+                      f'\t-> current_word: {word}, current_page: {page_num} ==>  full_text_loaded')
+            except Exception as e:
+                print(f'{e} ===>{multiprocessing.current_process().name}\n'
+                      f'{multiprocessing.current_process().name}'
+                      f'\t-> current_word: {word}, current_page: {page_num} ==>  full_text_failed')
 
             df['date'] = datetime.today().date()
             df['origin'] = 'KoreaUnivCorpus'
@@ -439,6 +476,7 @@ def save_korea_university_corpus_result_parallel(of: str):
     total_query = pd.read_csv('./query_infos_with_morprh.csv').iloc[offset:]
     parsed = _get_parsed_list()
     total_query = _drop_parsed_cases(total_query, parsed)
+    print(f"")
     print(f"TARGET WORKS: {len(total_query)} / 23744")
 
     query_infos = tuple(total_query.to_records(index=False))
@@ -446,30 +484,67 @@ def save_korea_university_corpus_result_parallel(of: str):
     # 23744 run cases
     # 1282 wisdoms
 
-    cores = 4
-    manager = Manager()
-    mgr_list = manager.list()
-
-    pool = multiprocessing.Pool(processes=cores)
-
-    res = pool.map_async(
-        partial(sub_get_total_data, mgr_list, corpusSearcher), query_infos)
-    res.wait()
+    # ======== multi process with pool map ======== #
+    # cores = 4
+    # manager = Manager()
+    # mgr_list = manager.list()
     #
-    # if mgr_list:
-    #     total_df = pd.concat(mgr_list, ignore_index=False)
-    #     total_df.to_csv('./total_res.csv', index=False)
+    # with multiprocessing.Pool(processes=cores) as pool:
+    #     res = pool.map(
+    #         partial(sub_get_total_data, mgr_list, corpusSearcher), query_infos, chunksize=1)
+    #     res.wait()
 
-    # for idx, query_info in enumerate(query_infos):
-    #     wisdom, page, total_page, query_word = query_info
-    #     print(f'current-> {wisdom}, {page}/{total_page} (row: {idx+offset}/{len(query_infos)})', end='')
-    #     examples_df = corpusSearcher.get_total_data_of(wisdom, is_manual=False, page_num=page)
-    #
-    #     if len(examples_df) > 0:
-    #         examples_df['wisdom_from'] = of
-    #         controller.save_df_to_sql(origin_df=examples_df, target_table_name='example',
-    #                                   if_exists='append', index=False)
-    #     print()
+    # ======== Single process with for loop ======== #
+    for idx, query_info in enumerate(query_infos):
+        wisdom, page, total_page, query_word = query_info
+        print(f'current-> {wisdom}, {page}/{total_page} (row: {idx + offset}/{len(query_infos)})', end='')
+        examples_df = corpusSearcher.get_total_data_of(wisdom, is_manual=False, page_num=page)
+
+        if len(examples_df) > 0:
+            examples_df['wisdom_from'] = of
+            controller.save_df_to_sql(origin_df=examples_df, target_table_name='example',
+                                      if_exists='append', index=False)
+        print()
+
+
+def upload_to_db():
+    saved_files = list(filter(
+        None.__ne__,
+        map(
+            lambda n:
+            None
+            if n == '.DS_Store'
+            else n,
+            os.listdir('./ds')
+        )
+    ))
+
+    for idx, saved_file in enumerate(saved_files):
+        if idx <= 6233:
+            continue
+        df = pd.read_csv(f'./ds/{saved_file}')
+
+        if 'Unnamed: 0' in df.columns:
+            df.drop(columns=['Unnamed: 0'], inplace=True)
+
+        if 'full' not in df.columns:
+            df['full'] = '_'
+
+        if 'next' not in df.columns:
+            df['next'] = None
+        if 'prev' not in df.columns:
+            df['prev'] = None
+
+        df['full'] = df['full'].apply(
+            lambda s:
+            s if len(s) <= 65535
+            else '_'
+        )
+
+        controller.save_df_to_sql(origin_df=df, target_table_name='example',
+                                  if_exists='append', index=False)
+
+        print(f'SAVE DONE: {idx}/{len(saved_files)} \t -> {saved_file}')
 
 
 def manual_download(target_dictionary: str, word: str):
@@ -492,7 +567,8 @@ if __name__ == '__main__':
     # get_korea_university_corpus_result('egs')
     # manual_download('egs', '산/NNG&넘/VV&어/EM&산/NNG')
 
-    save_korea_university_corpus_result_parallel('opendict')
+    # save_korea_university_corpus_result_parallel('opendict')
+    upload_to_db()
 
     # test = KoreaUniversityCorpusSearcher()
     # test.get_total_eg_length('가게/NNG&기둥/NNG&입춘/NNG')
