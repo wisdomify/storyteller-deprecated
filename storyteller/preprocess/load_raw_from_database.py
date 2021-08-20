@@ -46,7 +46,7 @@ def save_data(of: str, to: str, definition_from: list, example_from: list = None
     :param example_from:
     :return:
     """
-    sep = '\t' if to.split('.')[-1].lower() == '.tsv' else ','
+    sep = '\t' if to.split('.')[-1].lower() == 'tsv' else ','
     if of == 'definition':
         get_definitions(definition_from).to_csv(to, sep=sep, index=False)
 

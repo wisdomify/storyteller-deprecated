@@ -2,7 +2,8 @@ import os
 
 import pandas as pd
 
-from storyteller.collect.utils.proverbUtils import get_proverbs, get_target_proverbs
+from storyteller.collect.utils.proverbUtils import get_proverbs, get_target_proverbs, concat_context_example_from, \
+    clear_definition_for_hug
 from storyteller.paths import DATA_DIR
 
 
@@ -23,5 +24,15 @@ def main():
     print(wisdoms)
 
 
+def explore_concat():
+    # concat_context_example_from(directory=DATA_DIR + '/version_2/raw/wisdom2eg.tsv')
+    # concat_context_example_from(directory=DATA_DIR + '/version_3/raw/wisdom2eg.tsv')
+    # concat_context_example_from(directory=DATA_DIR + '/version_4/raw/wisdom2eg.tsv')
+
+    clear_definition_for_hug(directory=DATA_DIR + '/version_2/raw/wisdom2def.tsv')
+    clear_definition_for_hug(directory=DATA_DIR + '/version_3/raw/wisdom2def.tsv')
+    clear_definition_for_hug(directory=DATA_DIR + '/version_4/raw/wisdom2def.tsv')
+
+
 if __name__ == '__main__':
-    main()
+    explore_concat()
