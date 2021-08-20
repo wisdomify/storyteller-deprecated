@@ -1,0 +1,4 @@
+[core]
+    remote = storyteller
+['remote "storyteller"']
+    url = gs://wisdomify/story/storyteller
