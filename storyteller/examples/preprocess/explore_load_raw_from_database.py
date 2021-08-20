@@ -5,12 +5,16 @@ from storyteller.preprocess.load_raw_from_database import get_definitions, get_e
 
 
 def main():
-    print(get_definitions(['wikiquote']))
-    print(get_examples(definition_origins=['wikiquote'], example_origins=['KoreaUnivCorpus']))
-    save_data(of='example', to=os.path.join(DATA_DIR, 'version_1', 'from_db', 'wisdom2eg.tsv'),
-              definition_from=['wikiquote'], example_from=['KoreaUnivCorpus'])
-    save_data(of='definition', to=os.path.join(DATA_DIR, 'version_1', 'from_db', 'wisdom2def.tsv'),
-              definition_from=['wikiquote'], example_from=['KoreaUnivCorpus'])
+    ver = 4
+    def_origin = 'opendict'
+    ex_origin = 'KoreaUnivCorpus'
+
+    # print(get_definitions([def_origin]))
+    # print(get_examples(definition_origins=[def_origin], example_origins=[ex_origin]))
+    save_data(of='example', to=os.path.join(DATA_DIR, f'version_{ver}', 'from_db', 'wisdom2eg.tsv'),
+              definition_from=[def_origin], example_from=[ex_origin])
+    save_data(of='definition', to=os.path.join(DATA_DIR, f'version_{ver}', 'from_db', 'wisdom2def.tsv'),
+              definition_from=[def_origin], example_from=[ex_origin])
 
 
 if __name__ == '__main__':
