@@ -1,4 +1,4 @@
 [core]
-    remote = platanus_bucket
-['remote "platanus_bucket"']
-    url = s3://platanus.bucket/story/
+    remote = storyteller
+['remote "storyteller"']
+    url = gs://wisdomify/story/storyteller
