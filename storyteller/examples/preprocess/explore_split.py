@@ -5,7 +5,7 @@ from storyteller.preprocess.split import split_and_save, make_zip_files
 
 
 def explore():
-    ver = 1
+    ver = 6
     # for ver in range(2, 5):
     ver_dir = os.path.join(DATA_DIR, f'version_{ver}/')
 
