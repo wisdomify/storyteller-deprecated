@@ -23,7 +23,7 @@ conf = {
     'ENTITY_NAME': 'wisdomify',
     'PROJECT_NAME': 'wisdomify',
 
-    'job_type': 'replace_proverb_to_wisdom_token',
+    'job_type': 'remove_proverb',
 
     'artifact_name': f"opendict_wisdom2{spec['dtype']}-raw",
     'description': f"""
@@ -79,6 +79,62 @@ def load_and_log():
         run.log_artifact(raw_data)
 
 
+# Proverb -> [WISDOM]
+# def pre_process(raw_data):
+#     data_df = pd.DataFrame(raw_data)
+#
+#     # 예시가 비어있는 경우 필터링.
+#     data_df = data_df.loc[data_df['eg'].str.len() > 0]
+#
+#     # 속담이 직접적으로 언급된 문장만 필터링
+#     # 5324 -> 556개로 축소됨.
+#     data_df = data_df[data_df.apply(lambda r: r['wisdom'] in r['eg'], axis=1)].copy()
+#
+#     # Remove Emails
+#     data_df['eg'] = data_df.loc[:, 'eg'].apply(lambda r: re.sub('\S*@\S*\s?', '', r))
+#
+#     # Remove new line characters
+#     data_df['eg'] = data_df.loc[:, 'eg'].apply(lambda r: re.sub('\s+', ' ', r))
+#
+#     # Remove distracting single quotes
+#     data_df['eg'] = data_df.loc[:, 'eg'].apply(lambda r: re.sub("\'", "", r))
+#
+#     # 특수 따옴표 제거
+#     data_df['eg'] = data_df.loc[:, 'eg'].apply(lambda r: re.sub("“", "", r))
+#     data_df['eg'] = data_df.loc[:, 'eg'].apply(lambda r: re.sub("”", "", r))
+#
+#     # back slash remove
+#     data_df['eg'] = data_df.loc[:, 'eg'].apply(lambda r: re.sub('\\\\', "", r))
+#
+#     # forward slash remove
+#     data_df['eg'] = data_df.loc[:, 'eg'].apply(lambda r: re.sub('/', " ", r))
+#
+#     # Punctuation remove
+#     data_df['eg'] = data_df.loc[:, 'eg'].apply(
+#         lambda r: r.translate(str.maketrans('', '', string.punctuation))
+#     )
+#
+#     # special symbol filter
+#     data_df['eg'] = data_df.loc[:, 'eg'].apply(lambda r: re.sub('◆', " ", r))
+#     data_df['eg'] = data_df.loc[:, 'eg'].apply(lambda r: re.sub('·', " ", r))
+#
+#     # blank space remove at the end of string
+#     data_df['eg'] = data_df.loc[:, 'eg'].apply(lambda r: str(r).strip())
+#
+#     # space more than twice to once
+#     data_df['eg'] = data_df.loc[:, 'eg'].apply(lambda r: re.sub(' +', ' ', r))
+#
+#     # wisdom fit into vocab.py form
+#     data_df['wisdom'] = data_df.loc[:, 'wisdom'].apply(lambda r: str(r).strip())
+#     data_df['wisdom'] = data_df.loc[:, 'wisdom'].apply(lambda r: "꿩 대신 닭" if r == '꿩 대신 닭이다' else r)
+#
+#     data_df['eg'] = data_df.loc[:, ['wisdom', 'eg']].apply(lambda r: re.sub(r[0], '[WISDOM]', r[1]), axis=1)
+#
+#     data_df = data_df.drop('example_morph', axis=1)
+#
+#     return data_df
+
+# proverb -> REMOVED
 def pre_process(raw_data):
     data_df = pd.DataFrame(raw_data)
 
@@ -90,10 +146,10 @@ def pre_process(raw_data):
     data_df = data_df[data_df.apply(lambda r: r['wisdom'] in r['eg'], axis=1)].copy()
 
     # Remove Emails
-    data_df['eg'] = data_df.loc[:, 'eg'].apply(lambda r: re.sub('\S*@\S*\s?', '', r))
+    data_df['eg'] = data_df.loc[:, 'eg'].apply(lambda r: re.sub(r'\S*@\S*\s?', '', r))
 
     # Remove new line characters
-    data_df['eg'] = data_df.loc[:, 'eg'].apply(lambda r: re.sub('\s+', ' ', r))
+    data_df['eg'] = data_df.loc[:, 'eg'].apply(lambda r: re.sub(r'\s+', ' ', r))
 
     # Remove distracting single quotes
     data_df['eg'] = data_df.loc[:, 'eg'].apply(lambda r: re.sub("\'", "", r))
@@ -113,23 +169,27 @@ def pre_process(raw_data):
         lambda r: r.translate(str.maketrans('', '', string.punctuation))
     )
 
-    # special symbol filter
-    data_df['eg'] = data_df.loc[:, 'eg'].apply(lambda r: re.sub('◆', " ", r))
-    data_df['eg'] = data_df.loc[:, 'eg'].apply(lambda r: re.sub('·', " ", r))
-
     # blank space remove at the end of string
     data_df['eg'] = data_df.loc[:, 'eg'].apply(lambda r: str(r).strip())
-
-    # space more than twice to once
-    data_df['eg'] = data_df.loc[:, 'eg'].apply(lambda r: re.sub(' +', ' ', r))
 
     # wisdom fit into vocab.py form
     data_df['wisdom'] = data_df.loc[:, 'wisdom'].apply(lambda r: str(r).strip())
     data_df['wisdom'] = data_df.loc[:, 'wisdom'].apply(lambda r: "꿩 대신 닭" if r == '꿩 대신 닭이다' else r)
 
-    data_df['eg'] = data_df.loc[:, ['wisdom', 'eg']].apply(lambda r: re.sub(r[0], '[WISDOM]', r[1]), axis=1)
+    first_pattern = re.compile(r'WISDOM[이인\.].*? ')
 
-    data_df = data_df.drop('example_morph', axis=1)
+    for idx, row in data_df.iterrows():
+        wisdom, context = row[0], row[1]
+        if wisdom in context:
+            context: str
+            context = context.replace(wisdom, "WISDOM")
+            context = re.sub(r'([\'\"]|\(.+?\))', "", context)  # get rid of the punctuations
+            if first_pattern.search(context):
+                context = first_pattern.sub(" ", context)
+                if 'WISDOM' in context:
+                    context = context.replace('WISDOM', '')
+                    print(context)
+                row[1] = context
 
     return data_df
 
@@ -145,9 +205,9 @@ def preprocess_and_log():
                     job_type=conf['job_type']) as run:
         # 새롭게 저장할 아티펙트
         processed_data = wandb.Artifact(
-            "init_kuniv-preprocess_wisdom_token", type="dataset",
+            "init_kuniv-preprocess_no_wisdom", type="dataset",
             description="PreProcessed initial example sentences from Korea University Coropus where the proverbs are "
-                        "replaced to [WISDOM].",
+                        "removed.",
             metadata={
                 'proverb_exist': False
             })
@@ -163,7 +223,7 @@ def preprocess_and_log():
             processed_dataset = pre_process(raw_split)
 
             with processed_data.new_file(split + ".tsv", mode="wb") as file:
-                processed_dataset.to_csv(file, sep='\t')
+                processed_dataset.to_csv(file, sep='\t', index=False)
 
         run.log_artifact(processed_data)
 
