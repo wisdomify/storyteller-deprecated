@@ -11,3 +11,4 @@ DB_PW = os.getenv('db_password')
 DB_PORT = int(os.getenv('db_port'))
 
 STORYTELLER_SCHEMA = os.getenv('storyteller_schema')
+ELASTICSEARCH_PASSWORD = os.getenv('elasticsearch_password')
