@@ -11,6 +11,7 @@ spec = {
     'dtype': 'eg',
 }
 
+
 conf = {
     'ENTITY_NAME': 'wisdomify',
     'PROJECT_NAME': 'wisdomify',
