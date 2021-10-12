@@ -1,3 +1,7 @@
+import json
+from pathlib import Path
+from typing import List, Dict, Union
+
 from elasticsearch import Elasticsearch
 
 
@@ -9,6 +13,8 @@ class ElasticController:
                  index_name: str):
         self.elastic = Elasticsearch(cloud_id, http_auth=(user_id, user_pw))
         self.index = index_name
+
+        self.batch_size = 10000
 
     def read(self,
              query: dict,
@@ -42,7 +48,7 @@ class ElasticController:
         return self.elastic.search(index=self.index, query=query, highlight=highlight)
 
     def write(self,
-              info,
+              info: Union[List[Dict], Dict],
               bulk: bool):
         """
         :param bulk:
@@ -50,9 +56,30 @@ class ElasticController:
         :return:
         """
 
+        if not (bulk and (type(info) == list)):
+            raise ValueError("Invalid info: (bulk is True) info must be list of dictionary.")
+
+        if not (not bulk and (type(info) == dict)):
+            raise ValueError("Invalid info: (bulk is False) info must be dictionary .")
+
         if bulk:
-            # TODO: Bulk upload 구현.
-            return self.elastic.bulk(index=self.index, doc_type='_doc', body=info)
+            res = list()
+
+            for d in range((len(info) // self.batch_size) + 1):
+                cur_docs = info[d * self.batch_size: (d + 1) * self.batch_size]
+                cur_docs = '\n'.join(
+                    list(
+                        map(
+                            lambda doc: '{"index": {}}\n' + json.dumps(doc),
+                            cur_docs
+                        )
+                    )
+                )
+
+                r = self.elastic.bulk(index=self.index, doc_type='_doc', body=cur_docs)
+                res.append(r)
+
+            return res
+
         else:
             return self.elastic.index(index=self.index, doc_type='_doc', document=info)
-

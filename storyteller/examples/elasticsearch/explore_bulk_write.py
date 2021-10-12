@@ -15,14 +15,12 @@ def explore_bulk():
 
     res = es.write(
         bulk=True,
-        info='{"index": {"_index": "testiiing", "_id": "1"}}\n'
-             '{"source": 4, "title": "3572", "sents": "sent1"}\n'
-             '{"index": {"_index": "testiiing", "_id": "2"}}\n'
-             '{"source": 2, "title": "45475", "sents": "sent2"}\n'
-             '{"index": {"_index": "testiiing", "_id": "3"}}\n'
-             '{"source": 9, "title": "96346", "sents": "sent3"}\n'
-             '{"index": {"_index": "testiiing", "_id": "4"}}\n'
-             '{"source": 8, "title": "30875", "sents": "sent4"}\n'
+        info=[
+            {"source": 4, "title": "35722", "sents": "sent1"},
+            {"source": 2, "title": "45475", "sents": "sent2"},
+            {"source": 9, "title": "96346", "sents": "sent3"},
+            {"source": 8, "title": "30875", "sents": "sent4"}
+        ]
     )
 
     print(res)
