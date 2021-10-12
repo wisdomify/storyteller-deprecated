@@ -7,7 +7,7 @@ class ElasticController:
                  user_id: str,
                  user_pw: str,
                  index_name: str):
-        self.elastic = Elasticsearch(cloud_id, http_auth={user_id, user_pw})
+        self.elastic = Elasticsearch(cloud_id, http_auth=(user_id, user_pw))
         self.index = index_name
 
     def read(self,
@@ -52,7 +52,7 @@ class ElasticController:
 
         if bulk:
             # TODO: Bulk upload 구현.
-            self.elastic.bulk(index=self.index, doc_type='_doc')
+            return self.elastic.bulk(index=self.index, doc_type='_doc', body=info)
         else:
             return self.elastic.index(index=self.index, doc_type='_doc', document=info)
 
